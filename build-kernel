@@ -1,0 +1,51 @@
+#!/bin/bash
+
+function isInstalled() {
+	if [[ -z "$1" ]]; then
+		return 1
+	fi
+
+	if ! which "$1" &>/dev/null; then
+		echo "build-kernel error : $1 is not installed"
+		return 1
+	fi
+	return 0
+}
+
+function main() {
+	if [[ ! "$1" =~ ^[1-9]\.[1-9]?[0-9]\.[1-9]?[0-9]{0,2}$ && ! "$1" =~ ^[1-9]\.[1-9]?[0-9]$ ]]; then
+		echo "Error : you must provide a valid kernel version"
+		exit
+	fi
+
+	isInstalled tar
+	isInstalled wget
+	isInstalled make
+	isInstalled xz-utils
+
+	local version="$1"
+	local major=$(echo "$version" | cut -d. -f1)
+	local path="linux-$version"
+	local file="$path.tar.xz"
+	local url="https://cdn.kernel.org/pub/linux/kernel/v$major.x/$file"
+
+	# download linux
+	cd /build
+	wget -q $url
+	if [[ $? -ne 0 ]]; then
+		echo "Error : Failed to download archive '$url'"
+		echo "Error : Verify that kernel version exists '$url'"
+		exit 1
+	fi
+
+	tar -zx $file
+	if [[ $? -ne 0 ]]; then
+		echo "Error : Failed to extract archive '$path'"
+		exit 1
+	fi
+
+	cd $path
+	pwd
+	ls -al
+}
+main
