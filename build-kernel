@@ -15,13 +15,13 @@ function isInstalled() {
 function main() {
 	if [[ ! "$1" =~ ^[1-9]\.[1-9]?[0-9]\.[1-9]?[0-9]{0,2}$ && ! "$1" =~ ^[1-9]\.[1-9]?[0-9]$ ]]; then
 		echo "Error : you must provide a valid kernel version"
-		exit
+		return 0
 	fi
 
-	isInstalled tar
-	isInstalled wget
-	isInstalled make
-	isInstalled xz-utils
+	isInstalled tar || return 1
+	isInstalled wget || return 1
+	isInstalled make || return 1
+	isInstalled xz-utils || return 1
 
 	local version="$1"
 	local major=$(echo "$version" | cut -d. -f1)
@@ -35,17 +35,18 @@ function main() {
 	if [[ $? -ne 0 ]]; then
 		echo "Error : Failed to download archive '$url'"
 		echo "Error : Verify that kernel version exists '$url'"
-		exit 1
+		return 1
 	fi
 
 	tar -zx $file
 	if [[ $? -ne 0 ]]; then
 		echo "Error : Failed to extract archive '$path'"
-		exit 1
+		return 1
 	fi
 
 	cd $path
 	pwd
 	ls -al
+	return 0
 }
-main
+main "$@"
