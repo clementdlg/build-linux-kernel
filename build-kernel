@@ -6,13 +6,13 @@ function isInstalled() {
 	fi
 
 	if ! dpkg -l | grep -i "$1" &>/dev/null; then
-		echo "build-kernel error : $1 is not installed"
+		err "$1 is not installed"
 		return 1
 	fi
 	return 0
 }
 
-checkDependencies() {
+function checkDependencies() {
 	local pkgs="$@"
 	local pkgs=$(printf "%s\n" $pkgs)
 
@@ -22,10 +22,69 @@ checkDependencies() {
 	return 0
 }
 
+function downloadArch() {
+	url="$1"
+	version="$2"
+
+	[[ -z "$url" ]]  && return 1
+	[[ -z "$version" ]]  && return 1
+
+	echo "[Info] Downloading kernel archive"
+
+	cd /build
+	wget -q $url
+
+	if [[ $? -ne 0 ]]; then
+		err "Failed to download archive '$url'"
+		err "Verify that kernel version exists '$version'"
+		return 1
+	fi
+	return 0
+}
+
+function extractArch() {
+	[[ -z "$file" ]]  && return 1
+	echo "[Info] Extracting kernel archive"
+
+	tar -xf $file
+
+	if [[ $? -ne 0 ]]; then
+		err "Failed to extract archive '$file'"
+		return 1
+	fi
+	return 0
+}
+
+function compile() {
+	conf="$1"
+	target="$2"
+	if [[ -z "$conf" || -z "$target" ]]; then
+		err "compile() : Usage :"
+		err "arg 1 = config file"
+		err "arg 2 = make target"
+		return 1
+	fi
+
+	echo "[Info] Start compilation of '$target'"
+	make KCONFIG_CONFIG=$conf -j$(nproc) "$target"
+
+	if [[ $? -ne 0 ]]; then
+		err "Failed to compile target '$target'"
+		return 1
+	fi
+	echo "[Info] Successfully compiled target '$target'"
+	return 0
+}
+
 function main() {
 	if [[ ! "$1" =~ ^[1-9]\.[1-9]?[0-9]\.[1-9]?[0-9]{0,2}$ && ! "$1" =~ ^[1-9]\.[1-9]?[0-9]$ ]]; then
-		echo "Error : you must provide a valid kernel version"
+		err "You must provide a valid kernel version"
 		return 0
+	fi
+
+	if [[ ! -f "/build/config" ]]; then
+		err "Kernel config must be present"
+		return 1
 	fi
 
 	local version="$1"
@@ -33,57 +92,27 @@ function main() {
 	local path="linux-$version"
 	local file="$path.tar.xz"
 	local url="https://cdn.kernel.org/pub/linux/kernel/v$major.x/$file"
+	local conf="/build/$path/.config"
 
 	checkDependencies || return 1
 
-	echo "[Info] Downloading kernel archive"
-	cd /build
-	wget -q $url
-	if [[ $? -ne 0 ]]; then
-		echo "Error : Failed to download archive '$url'"
-		echo "Error : Verify that kernel version exists '$url'"
-		return 1
-	fi
+	downloadArch "$url" "$version" || return 1
 
-	echo "[Info] Extracting kernel archive"
-	tar -xf $file
-	if [[ $? -ne 0 ]]; then
-		echo "Error : Failed to extract archive '$file'"
-		return 1
-	fi
-
-	if [[ ! -f "config" ]]; then
-		echo "Error : kernel config must be present"
-		return 1
-	fi
-
-	local conf="/build/$path/.config"
-	local output="/output"
+	extractArch "$file" || return 1
 
 	cp /build/config $conf
 	cd /build/$path
 
 	# compiling kernel
-	make KCONFIG_CONFIG=$conf -j$(nproc) bzImage
-	if [[ $? -ne 0 ]]; then
-		echo "[Error] Linux kernel $version could not be compiled"
-		return 1
-	fi
+	compile "$conf" "bzImage" || return 1
 
 	cp /build/$path/arch/x86/boot/bzImage /output
 
 	# kernel modules
-	make KCONFIG_CONFIG=$conf -j$(nproc) modules
-	if [[ $? -ne 0 ]]; then
-		echo "[Error] Linux modules could not be compiled"
-		return 1
-	fi
+	compile "$conf" "modules" || return 1
 
-	make KCONFIG_CONFIG=$conf -j$(nproc) modules_install
-	if [[ $? -ne 0 ]]; then
-		echo "[Error] Linux modules could not be compiled"
-		return 1
-	fi
+	# install modules
+	compile "$conf" "modules_install" || return 1
 
 	local mods="/lib/modules/$version"
 	if [[ ! -d "$mods" ]]; then
@@ -93,6 +122,11 @@ function main() {
 	fi
 	echo "[Info] Linux kernel $version has successfully compiled !"
 	return 0
+}
+
+# wrappers
+function err() {
+	echo "build-kernel [Error] $1" >&2
 }
 
 main "$@"
