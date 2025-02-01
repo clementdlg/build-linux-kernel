@@ -105,7 +105,6 @@ function main() {
 		cp -r "/lib/modules/$version" /shared
 	fi
 	echo "[Info] Linux kernel $version has successfully compiled !"
-	sleep 600 # debug
 	return 0
 }
 
