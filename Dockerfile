@@ -1,8 +1,8 @@
-FROM debian:12.9-slim
+FROM alpine:3.21
 
-RUN apt update && \
-	apt install wget xz-utils make gcc flex bison libelf-dev bc libssl-dev kmod -y && \
-	apt clean
+RUN apk update && \
+	apk add --no-cache wget make gcc flex bison elfutils-dev bc libressl-dev kmod bash libc-dev linux-headers diffutils findutils perl && \
+	rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 WORKDIR /build
 

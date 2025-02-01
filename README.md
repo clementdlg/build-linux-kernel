@@ -12,14 +12,18 @@ cd build-linux-kernel
 - build the image
 
 **Warning** : you must have a `config` file next to the `Dockerfile`. You can use the default make config or your distro's config
+**Note** :
+- The config file provided in this repo is the default config for kernel 6.13. You should only use it for this version
+- Arch linux's kernel config [here](https://gitlab.archlinux.org/archlinux/packaging/packages/linux/-/blob/main/config)
+
 ```bash
 docker build -t kernel-build .
 ```
 
 ## Running the build
 - syntax :
-	- **host-dir** : the directory where you want the kernel to be written
-	- **kernel-version** : the version that you want to compile
+**host-dir** : the directory where you want the kernel to be written
+**kernel-version** : the version that you want to compile
 ```bash
 docker run -v <host-dir>:/output kernel-build <kernel-version>
 ```
