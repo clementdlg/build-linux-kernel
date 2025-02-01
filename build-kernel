@@ -1,27 +1,9 @@
 #!/bin/bash
 
-function isInstalled() {
-	if [[ -z "$1" ]]; then
-		return 1
-	fi
-
-	apk list -I | grep "$1" &>/dev/null
-	if [[ $? -ne 0 ]]; then
-		err "$1 is not installed"
-		return 1
-	fi
-	return 0
-}
-
-function checkDependencies() {
-	local pkgs="$@"
-	local pkgs=$(printf "%s\n" $pkgs)
-
-	for pkg in ${pkgs[@]}; do
-		isInstalled "$pkg" || return 1
-	done
-	return 0
-}
+# Description : automated build of the linux kernel
+# Author : Clément DE LA GENIERE
+# btw : This script is made to be executed inside the appropriate docker container,
+# 		and as such, it assumes that the right dependencies are installed
 
 function downloadArch() {
 	url="$1"
@@ -83,11 +65,6 @@ function main() {
 		return 0
 	fi
 
-	if [[ ! -f "/build/config" ]]; then
-		err "Kernel config must be present"
-		return 1
-	fi
-
 	local version="$1"
 	local major=$(echo "$version" | cut -d. -f1)
 	local path="linux-$version"
@@ -95,19 +72,25 @@ function main() {
 	local url="https://cdn.kernel.org/pub/linux/kernel/v$major.x/$file"
 	local conf="/build/$path/.config"
 
-	checkDependencies "wget make gcc flex bison elfutils-dev bc libressl-dev kmod bash linux-headers diffutils findutils perl" || return 1
-
 	downloadArch "$url" "$version" || return 1
 
 	extractArch "$file" || return 1
 
-	cp /build/config $conf
 	cd /build/$path
+
+	if [[ -f "/shared/config" ]]; then
+		echo "[Info] Found Kernel config in ./shared"
+		cp /shared/config $conf
+	else
+		echo "[Info] No Kernel config found in ./shared"
+		echo "[Info] Falling back on default config"
+		make defconfig
+	fi
 
 	# compiling kernel
 	compile "$conf" "bzImage" || return 1
 
-	cp /build/$path/arch/x86/boot/bzImage /output
+	cp "/build/$path/arch/x86/boot/bzImage" "/shared/bzImage-$version"
 
 	# kernel modules
 	compile "$conf" "modules" || return 1
@@ -117,11 +100,12 @@ function main() {
 
 	local mods="/lib/modules/$version"
 	if [[ ! -d "$mods" ]]; then
-		cp -r /lib/modules/* /output
+		cp -r /lib/modules/* /shared
 	else
-		cp -r "/lib/modules/$version" /output
+		cp -r "/lib/modules/$version" /shared
 	fi
 	echo "[Info] Linux kernel $version has successfully compiled !"
+	sleep 600 # debug
 	return 0
 }
 

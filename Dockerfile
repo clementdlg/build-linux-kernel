@@ -6,10 +6,9 @@ RUN apk update && \
 
 WORKDIR /build
 
-COPY config .
 COPY build-kernel .
 RUN chmod 755 build-kernel
 
 ENTRYPOINT [ "./build-kernel" ]
 
-CMD [ "" ]
+CMD [ "6.6.74" ]
