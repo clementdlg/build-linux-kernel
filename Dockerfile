@@ -1,7 +1,7 @@
 FROM debian:12.9-slim
 
 RUN apt update && \
-	apt install flex bison make wget xz-utils libelf-dev build-essential libncurses-dev bc fakeroot git libssl-dev -y
+	apt install flex bison make wget xz-utils libelf-dev build-essential libncurses-dev bc fakeroot git libssl-dev kmod -y
 
 WORKDIR /build
 COPY config .

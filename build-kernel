@@ -61,22 +61,29 @@ function main() {
 	cp /build/config $conf
 	cd /build/$path
 
-	# compiling
+	# compiling kernel
 	make KCONFIG_CONFIG=$conf -j$(nproc) bzImage
 	if [[ $? -ne 0 ]]; then
 		echo "[Error] Linux kernel $version could not be compiled"
 		return 1
 	fi
 
-	cp /build/arch/x86/boot/bzImage /output
+	cp /build/$path/arch/x86/boot/bzImage /output/bzImage
 
+	# kernel modules
 	make KCONFIG_CONFIG=$conf -j$(nproc) modules
 	if [[ $? -ne 0 ]]; then
 		echo "[Error] Linux modules could not be compiled"
 		return 1
 	fi
 
-	cp /lib/modules/* /output
+	make KCONFIG_CONFIG=$conf -j$(nproc) modules_install
+	if [[ $? -ne 0 ]]; then
+		echo "[Error] Linux modules could not be compiled"
+		return 1
+	fi
+
+	cp -r "/lib/modules/$version" /output
 	echo "[Info] Linux kernel $version has successfully compiled !"
 	return 0
 }
