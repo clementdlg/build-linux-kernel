@@ -16,7 +16,9 @@ docker build -t kernel-build .
 
 # Running the kernel build
 - syntax :
+
 **host-dir** : the directory where you want the kernel to be written
+
 **kernel-version** : the version that you want to compile
 ```bash
 docker run --rm -v <host-dir>:/shared kernel-build <kernel-version>
