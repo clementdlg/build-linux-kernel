@@ -10,7 +10,8 @@ cd build-linux-kernel
 ```
 
 - build the image
-**Warning** : you must have a `config` file next you the `Dockerfile`. You can use the default make config or your distro's config
+
+**Warning** : you must have a `config` file next to the `Dockerfile`. You can use the default make config or your distro's config
 ```bash
 docker build -t kernel-build .
 ```
@@ -27,3 +28,4 @@ docker run -v <host-dir>:/output kernel-build <kernel-version>
 ```bash
 docker run -v /tmp/output/:/output kernel-build 6.13
 ```
+
