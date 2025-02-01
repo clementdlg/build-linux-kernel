@@ -5,7 +5,8 @@ function isInstalled() {
 		return 1
 	fi
 
-	if ! dpkg -l | grep -i "$1" &>/dev/null; then
+	dpkg -l | grep -i "$1" &>/dev/null
+	if [[ $? -ne 0 ]]; then
 		err "$1 is not installed"
 		return 1
 	fi
@@ -17,7 +18,7 @@ function checkDependencies() {
 	local pkgs=$(printf "%s\n" $pkgs)
 
 	for pkg in ${pkgs[@]}; do
-		isInstalled || return 1
+		isInstalled "$pkg" || return 1
 	done
 	return 0
 }
@@ -94,7 +95,7 @@ function main() {
 	local url="https://cdn.kernel.org/pub/linux/kernel/v$major.x/$file"
 	local conf="/build/$path/.config"
 
-	checkDependencies || return 1
+	checkDependencies "wget xz-utils make gcc flex bison bc libssl-dev kmod" || return 1
 
 	downloadArch "$url" "$version" || return 1
 
