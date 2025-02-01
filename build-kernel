@@ -5,10 +5,20 @@ function isInstalled() {
 		return 1
 	fi
 
-	if ! which "$1" &>/dev/null; then
+	if ! dpkg -l | grep -i "$1" &>/dev/null; then
 		echo "build-kernel error : $1 is not installed"
 		return 1
 	fi
+	return 0
+}
+
+checkDependencies() {
+	local pkgs="$@"
+	local pkgs=$(printf "%s\n" $pkgs)
+
+	for pkg in ${pkgs[@]}; do
+		isInstalled || return 1
+	done
 	return 0
 }
 
@@ -18,21 +28,13 @@ function main() {
 		return 0
 	fi
 
-	isInstalled gcc || return 1
-	isInstalled flex || return 1
-	isInstalled bison || return 1
-
-	isInstalled make || return 1
-	isInstalled wget || return 1
-	isInstalled xz || return 1
-
-	isInstalled tar || return 1
-
 	local version="$1"
 	local major=$(echo "$version" | cut -d. -f1)
 	local path="linux-$version"
 	local file="$path.tar.xz"
 	local url="https://cdn.kernel.org/pub/linux/kernel/v$major.x/$file"
+
+	checkDependencies || return 1
 
 	echo "[Info] Downloading kernel archive"
 	cd /build
@@ -68,7 +70,7 @@ function main() {
 		return 1
 	fi
 
-	cp /build/$path/arch/x86/boot/bzImage /output/bzImage
+	cp /build/$path/arch/x86/boot/bzImage /output
 
 	# kernel modules
 	make KCONFIG_CONFIG=$conf -j$(nproc) modules
@@ -83,8 +85,14 @@ function main() {
 		return 1
 	fi
 
-	cp -r "/lib/modules/$version" /output
+	local mods="/lib/modules/$version"
+	if [[ ! -d "$mods" ]]; then
+		cp -r /lib/modules/* /output
+	else
+		cp -r "/lib/modules/$version" /output
+	fi
 	echo "[Info] Linux kernel $version has successfully compiled !"
 	return 0
 }
+
 main "$@"
