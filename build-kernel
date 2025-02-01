@@ -18,10 +18,15 @@ function main() {
 		return 0
 	fi
 
-	isInstalled tar || return 1
-	isInstalled wget || return 1
+	isInstalled gcc || return 1
+	isInstalled flex || return 1
+	isInstalled bison || return 1
+
 	isInstalled make || return 1
-	isInstalled xz-utils || return 1
+	isInstalled wget || return 1
+	isInstalled xz || return 1
+
+	isInstalled tar || return 1
 
 	local version="$1"
 	local major=$(echo "$version" | cut -d. -f1)
@@ -29,7 +34,7 @@ function main() {
 	local file="$path.tar.xz"
 	local url="https://cdn.kernel.org/pub/linux/kernel/v$major.x/$file"
 
-	# download linux
+	echo "[Info] Downloading kernel archive"
 	cd /build
 	wget -q $url
 	if [[ $? -ne 0 ]]; then
@@ -38,15 +43,41 @@ function main() {
 		return 1
 	fi
 
-	tar -zx $file
+	echo "[Info] Extracting kernel archive"
+	tar -xf $file
 	if [[ $? -ne 0 ]]; then
-		echo "Error : Failed to extract archive '$path'"
+		echo "Error : Failed to extract archive '$file'"
 		return 1
 	fi
 
-	cd $path
-	pwd
-	ls -al
+	if [[ ! -f "config" ]]; then
+		echo "Error : kernel config must be present"
+		return 1
+	fi
+
+	local conf="/build/$path/.config"
+	local output="/output"
+
+	cp /build/config $conf
+	cd /build/$path
+
+	# compiling
+	make KCONFIG_CONFIG=$conf -j$(nproc) bzImage
+	if [[ $? -ne 0 ]]; then
+		echo "[Error] Linux kernel $version could not be compiled"
+		return 1
+	fi
+
+	cp /build/arch/x86/boot/bzImage /output
+
+	make KCONFIG_CONFIG=$conf -j$(nproc) modules
+	if [[ $? -ne 0 ]]; then
+		echo "[Error] Linux modules could not be compiled"
+		return 1
+	fi
+
+	cp /lib/modules/* /output
+	echo "[Info] Linux kernel $version has successfully compiled !"
 	return 0
 }
 main "$@"
